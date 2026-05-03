@@ -8,7 +8,6 @@
 
 void RR(int msg_id, int sem_id, int total_processes, int quantum, int k) {
     
-   
     CircQ *ready_q = initCircQ(100);
     CircQ *blocked_q = initCircQ(100); 
 

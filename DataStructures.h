@@ -40,17 +40,20 @@ typedef struct{
     int modified;
 } PTE;
 
-/* ============================================================================== */
-/* ================ Shared Memory Structure ================ */
 typedef struct {
-    int remaining1;         // scheduler1 writes this
-    PCB stolen_process;     // the stolen PCB placed here
-    int steal_ready;        // 1 when stolen process is placed in shm
-    int barrier_count;      // counter for barrier synchronization
-    int steal_checkpoint;   // the simulated time when stealing should happen
-    int cpu1_arrived;       // CPU1 has arrived at this checkpoint time
-    int cpu1_finished;
-} StealShm;
+    int time;            
+    int address;           
+    char rwFlag;           
+} Request;
+
+typedef struct {
+    int process_id;
+    int limit;              // Number of virtual pages
+    PTE *page_table;        // Array of PTEs (size = limit)
+    Request *requests;      // Array of requests from file
+    int request_count;      // Number of requests
+    int last_request_idx;   // Track which request was last checked
+} ProcessMemory;
 
 /* ==================== FCFS Queue for one and two CPUs ========================= */
 typedef struct QNode

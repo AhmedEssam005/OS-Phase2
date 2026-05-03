@@ -17,7 +17,7 @@
 #include <string.h>
 #include <math.h>
 
-#ifdef __STDC_VERSION__
+#if defined(__STDC_VERSION__) || defined(__cplusplus)
 #include <stdbool.h>
 #else
 typedef short bool;

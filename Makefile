@@ -8,8 +8,8 @@ process_generator.out: process_generator.o clk_functions.o
 clk.out: clk.o
 	$(CC) clk.o -o clk.out
 
-scheduler.out: scheduler.o DataStructures.o clk_functions.o circQ.o RR.o
-	$(CC) scheduler.o DataStructures.o clk_functions.o circQ.o RR.o -o scheduler.out -lm
+scheduler.out: scheduler.o DataStructures.o clk_functions.o circQ.o RR.o MMU.o
+	$(CC) scheduler.o DataStructures.o clk_functions.o circQ.o RR.o MMU.o -o scheduler.out -lm
 
 process.out: process.o clk_functions.o
 	$(CC) process.o clk_functions.o -o process.out
