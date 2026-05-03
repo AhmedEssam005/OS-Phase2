@@ -1,13 +1,24 @@
-build:
-	gcc  process_generator.c clk_functions.c -o process_generator.out
-	gcc  clk.c -o clk.out
-	gcc scheduler.c DataStructures.c clk_functions.c circQ.c RR.c -o scheduler.out -lm
-	gcc  process.c clk_functions.c  -o process.out
+CC = gcc
+
+all: process_generator.out clk.out scheduler.out process.out
+
+process_generator.out: process_generator.o clk_functions.o
+	$(CC) process_generator.o clk_functions.o -o process_generator.out
+
+clk.out: clk.o
+	$(CC) clk.o -o clk.out
+
+scheduler.out: scheduler.o DataStructures.o clk_functions.o circQ.o RR.o
+	$(CC) scheduler.o DataStructures.o clk_functions.o circQ.o RR.o -o scheduler.out -lm
+
+process.out: process.o clk_functions.o
+	$(CC) process.o clk_functions.o -o process.out
+
+%.o: %.c
+	$(CC) -c $< -o $@
 
 clean:
-	rm -f *.out  
-
-all: clean build
+	rm -f *.out *.o
 
 run:
 	./process_generator.out processes.txt
