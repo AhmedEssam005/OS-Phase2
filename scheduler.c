@@ -27,7 +27,7 @@ int main(int argc, char * argv[])
         exit(1);
     }
 
-    key_t key = ftok("keyfile", cpu_id == 1 ? MSGKEY1 : MSGKEY2);
+    key_t key = ftok("keyfile", MSGKEY1);
     if(key == -1) { perror("ftok failed"); exit(-1); }
     int msqid = msgget(key, 0666);
     if(msqid == -1) {

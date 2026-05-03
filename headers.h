@@ -30,7 +30,6 @@ typedef short bool;
 /* ======== Message queue keys (generator <-> schedulers) ============= */         
 #define MSGKEY 200      
 #define MSGKEY1 65      // queue for scheduler 1
-#define MSGKEY2 66      // queue for scheduler 2
 
 ///////////////////
 #define SEMKEY 100
@@ -38,10 +37,6 @@ typedef short bool;
 #define SEMKEY_clk 103
 
 #define PROC_SEM_KEY 400
-
-/* ======== Shared memory for work stealing ============= */
-#define STEAL_SHM_KEY 500
-#define STEAL_SEM_KEY 101
 
 /* ======== Semaphore indices within steal semaphore set ============= */
 #define SEM_BARRIER  0   // both schedulers reached tick N

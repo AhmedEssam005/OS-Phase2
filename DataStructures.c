@@ -45,32 +45,6 @@ void freeQueue(Queue* q)
         dequeue(q);
     }
 }
-// steal the last node from q and return the pcb
-PCB* steal(Queue* q)
-{
-    if (q->head == NULL) {
-        return NULL; 
-    }
-    if (q->head == q->tail) {
-        PCB* pcb = q->head->pcb;
-        free(q->head);
-        q->head = NULL;
-        q->tail = NULL;
-        q->size--;
-        return pcb;
-    }
-    QNode* current = q->head;
-    while (current->next != q->tail) {
-        current = current->next;
-    }
-    PCB* pcb = q->tail->pcb;
-    free(q->tail);
-    current->next = NULL;
-    q->tail = current;
-    q->size--;
-    return pcb;
-}
-
 
 int totalRemainingTime(Queue* q)
 {

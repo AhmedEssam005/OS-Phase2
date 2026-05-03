@@ -16,7 +16,6 @@ processData processes[MAX_PROCESSES];
 int process_count = 0;
 int msgqid = -1;
 int msgqid1 = -1;
-int msgqid2 = -1; 
 int sem_id = -1;
 
 void clearResources(int signum);
@@ -56,11 +55,9 @@ int main(int argc, char *argv[])
     scanf("%d", &k_timeout);
 
     key_t key1 = ftok("keyfile", MSGKEY1);
-    key_t key2 = ftok("keyfile", MSGKEY2);
-    if(key1 == -1 || key2 == -1) { perror("ftok failed"); exit(-1); }
+    if(key1 == -1) { perror("ftok failed"); exit(-1); }
     msgqid1 = msgget(key1, IPC_CREAT | 0666);
-    msgqid2 = msgget(key2, IPC_CREAT | 0666);
-    if (msgqid1 == -1 || msgqid2 == -1) { perror("msgget failed"); exit(-1); }
+    if (msgqid1 == -1) { perror("msgget failed"); exit(-1); }
     msgqid = msgqid1;
 
 
@@ -155,10 +152,6 @@ void clearResources(int signum)
     if (msgqid1 != -1) {
         msgctl(msgqid1, IPC_RMID, NULL); 
         printf("Message queue 1 removed.\n");
-    }
-    if (msgqid2 != -1) {
-        msgctl(msgqid2, IPC_RMID, NULL); 
-        printf("Message queue 2 removed.\n");
     }
     
     destroyClk(true);
