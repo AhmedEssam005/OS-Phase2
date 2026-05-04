@@ -1,0 +1,45 @@
+Free Physical page 0 allocated
+Free Physical page 1 allocated
+At time 1 disk address 0 for process 1 is loaded into memory page 1.
+Free Physical page 2 allocated
+Free Physical page 3 allocated
+At time 6 disk address 10 for process 2 is loaded into memory page 3.
+Free Physical page 0 allocated
+Free Physical page 1 allocated
+At time 10 disk address 20 for process 3 is loaded into memory page 1.
+PageFault upon VA 0x10 from process 2
+Free Physical page 4 allocated
+Free Physical page 5 allocated
+Free Physical page 6 allocated
+At time 14 disk address 30 for process 4 is loaded into memory page 6.
+Free Physical page 7 allocated
+Free Physical page 8 allocated
+At time 16 disk address 40 for process 5 is loaded into memory page 8.
+Free Physical page 9 allocated
+Free Physical page 10 allocated
+At time 20 disk address 50 for process 6 is loaded into memory page 10.
+Free Physical page 11 allocated
+Free Physical page 12 allocated
+At time 22 disk address 60 for process 7 is loaded into memory page 12.
+At time 24 disk address 11 for process 2 is loaded into memory page 4.
+Free Physical page 13 allocated
+Free Physical page 14 allocated
+At time 26 disk address 70 for process 8 is loaded into memory page 14.
+Free Physical page 15 allocated
+Free Physical page 16 allocated
+At time 30 disk address 80 for process 9 is loaded into memory page 16.
+Free Physical page 17 allocated
+Free Physical page 18 allocated
+At time 34 disk address 90 for process 10 is loaded into memory page 18.
+Free Physical page 19 allocated
+Free Physical page 20 allocated
+At time 38 disk address 100 for process 11 is loaded into memory page 20.
+Free Physical page 21 allocated
+Free Physical page 22 allocated
+At time 42 disk address 110 for process 12 is loaded into memory page 22.
+Free Physical page 23 allocated
+Free Physical page 24 allocated
+At time 48 disk address 120 for process 13 is loaded into memory page 24.
+Free Physical page 25 allocated
+Free Physical page 26 allocated
+At time 52 disk address 130 for process 14 is loaded into memory page 26.

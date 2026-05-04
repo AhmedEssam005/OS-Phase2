@@ -9,11 +9,11 @@
 extern FILE *memory_log;
 
 void initialize_MMU();
-void allocate_page_table(int process_id, int limit, int base, int current_time);
-int access_memory(int process_id, int relative_time, int current_time);
-void complete_page_fault(int process_id, int current_time);
+void allocate_page_table(PCB *pcb, int current_time);
+int access_memory(PCB *pcb, int relative_time, int current_time);
+void complete_page_fault(PCB *pcb, int current_time);
 void clear_all_r_bits();
-int nru_evict();
-void free_process_memory(int process_id);
+int nru_evict(bool *is_modified);
+void free_process_memory(PCB *pcb);
 
 #endif

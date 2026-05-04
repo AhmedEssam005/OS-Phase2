@@ -38,7 +38,6 @@ int main(int argc, char * argv[])
     int sem_id = semget(SEMKEY, 1, 0666);
     if(sem_id == -1) { perror("semget sem failed"); exit(1); }
     
-    
     switch(algo) {
         case ALGO_RR:
             RR(msqid, sem_id, TotalProcesses, quantum, k);
