@@ -68,16 +68,27 @@ int nru_evict() {
 
     int victim_proc = RAM[victim].occupied_process;
     int victim_vpn = RAM[victim].loaded_VPN;
+
+    // Log swap-out if victim page was modified (spec req 16)
+    if (RAM[victim].modified && memory_log) {
+        fprintf(memory_log, "Swapping out page %d to disk\n", victim);
+        fflush(memory_log);
+    }
+
+    // Invalidate victim's PTE
     if (victim_proc >= 0 && victim_proc < 1000 && victim_vpn >= 0) {
         ProcessMemory *victim_mem = &process_memory[victim_proc];
         if (victim_mem->page_table != NULL && victim_vpn < victim_mem->limit) {
             victim_mem->page_table[victim_vpn].valid = false;
             victim_mem->page_table[victim_vpn].PhysicalAddress = -1;
             victim_mem->page_table[victim_vpn].refrenced = 0;
+            victim_mem->page_table[victim_vpn].modified = 0;
         }
     }
 
-    RAM[victim].is_free = true;
+    // Do NOT set is_free = true — frame stays locked so no other process
+    // can steal it while the faulting process is blocked (Arabic note 4)
+    RAM[victim].is_free = false;
     RAM[victim].occupied_process = -1;
     RAM[victim].loaded_VPN = -1;
     RAM[victim].referenced = 0;
@@ -281,22 +292,99 @@ int access_memory(int process_id, int relative_time, int current_time) {
 }
 
 void complete_page_fault(int process_id, int current_time) {
-    // TODO: Find a free frame in RAM for the incoming page
-    // TODO: If NO free frames exist -> Run the NRU Eviction Algorithm!
-    //       -> (NRU: Check classes 0-3 based on R/M bits, evict a victim, update victim's PTE to is_valid = 0)
-    
-    // TODO: Assign the frame to the faulting process
-    // TODO: Update the frame's metadata (process_id, virtual_page_number, is_free = 0)
-    // TODO: Update the faulting process's PTE (is_valid = 1, frame_number = X)
-    
-    printf("[MMU] Process %d completed page fault at time %d\n", process_id, current_time);
+    // Called when process wakes from blocked queue (Arabic note 3)
+    // The frame was already reserved in access_memory() before blocking
+    int frame = process_memory[process_id].reserved_frame;
+    int vpn = process_memory[process_id].pending_fault_vpn;
+
+    if (frame == -1 || vpn == -1) {
+        fprintf(stderr, "ERROR: complete_page_fault called but no reserved frame/vpn for process %d\n", process_id);
+        return;
+    }
+
+    // Assign the frame to the faulting process
+    RAM[frame].is_free = false;
+    RAM[frame].is_PT = false;
+    RAM[frame].occupied_process = process_id;
+    RAM[frame].loaded_VPN = vpn;
+    RAM[frame].referenced = 1;  // Page is being accessed now
+    RAM[frame].modified = 0;
+
+    // Update the faulting process's PTE
+    process_memory[process_id].page_table[vpn].PhysicalAddress = frame;
+    process_memory[process_id].page_table[vpn].valid = true;
+    process_memory[process_id].page_table[vpn].refrenced = 0;
+    process_memory[process_id].page_table[vpn].modified = 0;
+
+    // Log: At time T disk address D for process P is loaded into memory page F.
+    // disk_address = base + vpn
+    int disk_address = process_memory[process_id].base + vpn;
+    if (memory_log) {
+        fprintf(memory_log, "At time %d disk address %d for process %d is loaded into memory page %d.\n",
+                current_time, disk_address, process_id, frame);
+        fflush(memory_log);
+    }
+
+    // Reset reservation (Arabic note 4: flag back to -1 when process resumes)
+    process_memory[process_id].reserved_frame = -1;
+    process_memory[process_id].pending_fault_vpn = -1;
+
+    printf("[MMU] Process %d completed page fault at time %d: VPN %d -> frame %d\n",
+           process_id, current_time, vpn, frame);
 }
 
 void clear_all_r_bits() {
-    // TODO: Loop through RAM[0] to RAM[31]
-    // TODO: If a frame is occupied (!is_free) AND is not a page table (!is_page_table):
-    //       -> Set frame's r_bit = 0
-    //       -> Find the owning process's PTE for this frame and set its r_bit = 0
-    
-    printf("[MMU DUMMY] Clearing all R-bits for NRU algorithm\n");
+    // Called every K quantums to make NRU meaningful (spec NRU Notes)
+    for (int i = 0; i < 32; i++) {
+        if (RAM[i].is_free || RAM[i].is_PT) {
+            continue;
+        }
+        // Clear R bit in frame
+        RAM[i].referenced = 0;
+
+        // Also clear R bit in the owning process's PTE
+        int proc = RAM[i].occupied_process;
+        int vpn = RAM[i].loaded_VPN;
+        if (proc >= 0 && proc < 1000 && vpn >= 0) {
+            if (process_memory[proc].page_table != NULL && vpn < process_memory[proc].limit) {
+                process_memory[proc].page_table[vpn].refrenced = 0;
+            }
+        }
+    }
+    printf("[MMU] Cleared all R-bits for NRU algorithm\n");
+}
+
+void free_process_memory(int process_id) {
+    // Free all frames owned by this process (both data and PT frames)
+    for (int i = 0; i < 32; i++) {
+        if (RAM[i].occupied_process == process_id && !RAM[i].is_free) {
+            RAM[i].is_free = true;
+            RAM[i].is_PT = false;
+            RAM[i].occupied_process = -1;
+            RAM[i].loaded_VPN = -1;
+            RAM[i].referenced = 0;
+            RAM[i].modified = 0;
+        }
+    }
+
+    // Free dynamically allocated arrays
+    if (process_memory[process_id].page_table != NULL) {
+        free(process_memory[process_id].page_table);
+        process_memory[process_id].page_table = NULL;
+    }
+    if (process_memory[process_id].requests != NULL) {
+        free(process_memory[process_id].requests);
+        process_memory[process_id].requests = NULL;
+    }
+
+    // Reset ProcessMemory entry
+    process_memory[process_id].process_id = -1;
+    process_memory[process_id].limit = 0;
+    process_memory[process_id].base = 0;
+    process_memory[process_id].request_count = 0;
+    process_memory[process_id].last_request_idx = 0;
+    process_memory[process_id].reserved_frame = -1;
+    process_memory[process_id].pending_fault_vpn = -1;
+
+    printf("[MMU] Freed all memory for process %d\n", process_id);
 }
