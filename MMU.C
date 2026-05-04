@@ -1,7 +1,7 @@
 #include "MMU.h"
 #include <limits.h>
 
-int pending_faults[100];
+FILE *memory_log = NULL;
 Frame RAM[32];
 ProcessMemory process_memory[1000];
 int memory_initialized = 0;
@@ -40,6 +40,52 @@ int find_free_frame() {
     return -1;  // No free frames
 }
 
+int nru_evict() {
+    int victim = -1;
+    int best_class = 4;
+
+    for (int i = 0; i < 32; i++) {
+        if (RAM[i].is_free || RAM[i].is_PT) {
+            continue;
+        }
+
+        int r = RAM[i].referenced ? 1 : 0;
+        int m = RAM[i].modified ? 1 : 0;
+        int cls = r * 2 + m;
+
+        if (cls < best_class) {
+            best_class = cls;
+            victim = i;
+            if (cls == 0) {
+                break;
+            }
+        }
+    }
+
+    if (victim == -1) {
+        return -1;
+    }
+
+    int victim_proc = RAM[victim].occupied_process;
+    int victim_vpn = RAM[victim].loaded_VPN;
+    if (victim_proc >= 0 && victim_proc < 1000 && victim_vpn >= 0) {
+        ProcessMemory *victim_mem = &process_memory[victim_proc];
+        if (victim_mem->page_table != NULL && victim_vpn < victim_mem->limit) {
+            victim_mem->page_table[victim_vpn].valid = false;
+            victim_mem->page_table[victim_vpn].PhysicalAddress = -1;
+            victim_mem->page_table[victim_vpn].refrenced = 0;
+        }
+    }
+
+    RAM[victim].is_free = true;
+    RAM[victim].occupied_process = -1;
+    RAM[victim].loaded_VPN = -1;
+    RAM[victim].referenced = 0;
+    RAM[victim].modified = 0;
+
+    return victim;
+}
+
 
 void initialize_MMU() {
     // Initialize all 32 frames as free
@@ -60,19 +106,28 @@ void initialize_MMU() {
         process_memory[i].requests = NULL;
         process_memory[i].request_count = 0;
         process_memory[i].last_request_idx = 0;
+        process_memory[i].base = 0;
+        process_memory[i].reserved_frame = -1;
+        process_memory[i].pending_fault_vpn = -1;
+    }
+
+    memory_log = fopen("memory.log", "w");
+    if (memory_log == NULL) {
+        perror("ERROR: Unable to open memory.log");
+        memory_log = stderr;
     }
     
     memory_initialized = 1;
     printf("[MMU] Initializing MMU: 32 frames allocated, all free\n");
 }
 
-void allocate_page_table(int process_id, int limit) {
+void allocate_page_table(int process_id, int limit, int base, int current_time) {
     if (!memory_initialized) {
         fprintf(stderr, "ERROR: MMU not initialized. Call initialize_MMU() first.\n");
         return;
     }
     
-    printf("[MMU] Allocating Page Table for Process %d (limit=%d pages)\n", process_id, limit);
+    printf("[MMU] Allocating Page Table for Process %d (limit=%d pages, base=%d, time=%d)\n", process_id, limit, base, current_time);
     
     // ========== Part A: Load Request File ==========
     char filename[256];
@@ -120,6 +175,8 @@ void allocate_page_table(int process_id, int limit) {
                 if (address >= 0) {  // Valid conversion
                     process_memory[process_id].requests[idx].time = time;
                     process_memory[process_id].requests[idx].address = address;
+                    strncpy(process_memory[process_id].requests[idx].binary_addr, binary_addr, sizeof(process_memory[process_id].requests[idx].binary_addr));
+                    process_memory[process_id].requests[idx].binary_addr[sizeof(process_memory[process_id].requests[idx].binary_addr) - 1] = '\0';
                     process_memory[process_id].requests[idx].rwFlag = rw_flag;
                     idx++;
                 }
@@ -135,8 +192,11 @@ void allocate_page_table(int process_id, int limit) {
     // Find a free frame for the Page Table itself
     int pt_frame = find_free_frame();
     if (pt_frame == -1) {
-        fprintf(stderr, "ERROR: No free frames available to allocate Page Table for Process %d\n", process_id);
-        return;  // Person 3 will handle NRU eviction in complete version
+        pt_frame = nru_evict();
+        if (pt_frame == -1) {
+            fprintf(stderr, "ERROR: No frames available to allocate Page Table for Process %d\n", process_id);
+            return;
+        }
     }
     
     // Allocate Page Table Entry array
@@ -167,16 +227,29 @@ void allocate_page_table(int process_id, int limit) {
     process_memory[process_id].limit = limit;
     process_memory[process_id].page_table = page_table;
     process_memory[process_id].last_request_idx = 0;
+    process_memory[process_id].base = base;
+    process_memory[process_id].reserved_frame = -1;
+    process_memory[process_id].pending_fault_vpn = -1;
     
     printf("[MMU] Process %d: Page Table allocated at frame %d\n", process_id, pt_frame);
     
     // ========== Part C: Load First Page (VPN 0) ==========
     int first_page_frame = find_free_frame();
+    bool found_free = true;
     if (first_page_frame == -1) {
-        fprintf(stderr, "ERROR: No free frames to load first page for Process %d\n", process_id);
-        // In complete version, Person 3 handles NRU eviction here
-        return;
+        first_page_frame = nru_evict();
+        found_free = false;
+        if (first_page_frame == -1) {
+            fprintf(stderr, "ERROR: No frames to load first page for Process %d\n", process_id);
+            return;
+        }
     }
+
+    if (found_free) {
+        fprintf(memory_log, "Free Physical page %d allocated\n", first_page_frame);
+    }
+    fprintf(memory_log, "At time %d disk address %d for process %d is loaded into memory page %d.\n",
+            current_time, base + 0, process_id, first_page_frame);
     
     // Mark the data frame as occupied
     RAM[first_page_frame].is_free = false;

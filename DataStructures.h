@@ -43,6 +43,7 @@ typedef struct{
 typedef struct {
     int time;            
     int address;           
+    char binary_addr[16];  
     char rwFlag;           
 } Request;
 
@@ -53,6 +54,9 @@ typedef struct {
     Request *requests;      // Array of requests from file
     int request_count;      // Number of requests
     int last_request_idx;   // Track which request was last checked
+    int base;               // disk base page number
+    int reserved_frame;     // frame locked during fault (-1 = none)
+    int pending_fault_vpn;  // VPN that caused the fault (-1 = none)
 } ProcessMemory;
 
 /* ==================== FCFS Queue for one and two CPUs ========================= */
