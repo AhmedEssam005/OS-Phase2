@@ -35,90 +35,6 @@ int binary_to_decimal(const char *binary_str)
     return result;
 }
 
-int find_free_frame()
-{
-    for (int i = 0; i < 32; i++)
-    {
-        if (RAM[i].is_free)
-        {
-            if (memory_log)
-            {
-                fprintf(memory_log, "Free Physical page %d allocated\n", i);
-                fflush(memory_log);
-            }
-            return i;
-        }
-    }
-    return -1;
-}
-
-int nru_evict(bool *is_modified)
-{
-    int victim = -1;
-    int best_class = 4;
-
-    for (int i = 0; i < 32; i++)
-    {
-        if (RAM[i].is_free || RAM[i].is_PT)
-            continue;
-
-        int r = RAM[i].referenced ? 1 : 0;
-        int m = RAM[i].modified ? 1 : 0;
-        int cls = r * 2 + m;
-
-        if (cls < best_class)
-        {
-            best_class = cls;
-            victim = i;
-            if (cls == 0)
-                break;
-        }
-    }
-
-    if (victim == -1)
-        return -1;
-
-    int victim_proc = RAM[victim].occupied_process;
-    int victim_vpn = RAM[victim].loaded_VPN;
-
-    if (is_modified != NULL)
-    {
-        *is_modified = (RAM[victim].modified == 1) ? true : false;
-    }
-
-    if (RAM[victim].modified && memory_log)
-    {
-        fprintf(memory_log, "Swapping out page %d to disk\n", victim);
-        fflush(memory_log);
-    }
-
-    if (victim_proc >= 0 && victim_vpn >= 0)
-    {
-        for (int j = 0; j < 32; j++)
-        {
-            if (RAM[j].is_PT && RAM[j].occupied_process == victim_proc)
-            {
-                if (RAM[j].page_table != NULL && victim_vpn < RAM[j].pt_limit)
-                {
-                    RAM[j].page_table[victim_vpn].valid = false;
-                    RAM[j].page_table[victim_vpn].PhysicalAddress = -1;
-                    RAM[j].page_table[victim_vpn].refrenced = 0;
-                    RAM[j].page_table[victim_vpn].modified = 0;
-                }
-                break;
-            }
-        }
-    }
-
-    RAM[victim].is_free = false;
-    RAM[victim].occupied_process = -1;
-    RAM[victim].loaded_VPN = -1;
-    RAM[victim].referenced = 0;
-    RAM[victim].modified = 0;
-
-    return victim;
-}
-
 void initialize_MMU()
 {
     for (int i = 0; i < 32; i++)
@@ -144,6 +60,23 @@ void initialize_MMU()
     printf("[MMU] Initializing MMU: 32 frames allocated, all free\n");
 }
 
+int find_free_frame()
+{
+    for (int i = 0; i < 32; i++)
+    {
+        if (RAM[i].is_free)
+        {
+            if (memory_log)
+            {
+                fprintf(memory_log, "Free Physical page %d allocated\n", i);
+                fflush(memory_log);
+            }
+            return i;
+        }
+    }
+    return -1;
+}
+
 void allocate_page_table(PCB *pcb, int current_time)
 {
     if (!memory_initialized)
@@ -154,7 +87,6 @@ void allocate_page_table(PCB *pcb, int current_time)
     char filename[256];
     snprintf(filename, sizeof(filename), "requests_%d.txt", pcb->id);
     FILE *req_file = fopen(filename, "r");
-
     if (req_file == NULL)
     {
         pcb->request_count = 0;
@@ -241,6 +173,74 @@ void allocate_page_table(PCB *pcb, int current_time)
     pcb->reserved_frame = -1;
     pcb->pending_fault_vpn = -1;
 }
+
+int nru_evict(bool *is_modified)
+{
+    int victim = -1;
+    int best_class = 4;
+
+    for (int i = 0; i < 32; i++)
+    {
+        if (RAM[i].is_free || RAM[i].is_PT)
+            continue;
+
+        int r = RAM[i].referenced ? 1 : 0;
+        int m = RAM[i].modified ? 1 : 0;
+        int cls = r * 2 + m;
+
+        if (cls < best_class)
+        {
+            best_class = cls;
+            victim = i;
+            if (cls == 0)
+                break;
+        }
+    }
+
+    if (victim == -1)
+        return -1;
+
+    int victim_proc = RAM[victim].occupied_process;
+    int victim_vpn = RAM[victim].loaded_VPN;
+
+    if (is_modified != NULL)
+    {
+        *is_modified = (RAM[victim].modified == 1) ? true : false;
+    }
+
+    if (RAM[victim].modified && memory_log)
+    {
+        fprintf(memory_log, "Swapping out page %d to disk\n", victim);
+        fflush(memory_log);
+    }
+
+    if (victim_proc >= 0 && victim_vpn >= 0)
+    {
+        for (int j = 0; j < 32; j++)
+        {
+            if (RAM[j].is_PT && RAM[j].occupied_process == victim_proc)
+            {
+                if (RAM[j].page_table != NULL && victim_vpn < RAM[j].pt_limit)
+                {
+                    RAM[j].page_table[victim_vpn].valid = false;
+                    RAM[j].page_table[victim_vpn].PhysicalAddress = -1;
+                    RAM[j].page_table[victim_vpn].refrenced = 0;
+                    RAM[j].page_table[victim_vpn].modified = 0;
+                }
+                break;
+            }
+        }
+    }
+
+    RAM[victim].is_free = false;
+    RAM[victim].occupied_process = -1;
+    RAM[victim].loaded_VPN = -1;
+    RAM[victim].referenced = 0;
+    RAM[victim].modified = 0;
+
+    return victim;
+}
+
 
 int access_memory(PCB *pcb, int relative_time, int current_time)
 {

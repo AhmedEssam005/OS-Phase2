@@ -3,43 +3,49 @@ Free Physical page 1 allocated
 At time 1 disk address 0 for process 1 is loaded into memory page 1.
 Free Physical page 2 allocated
 Free Physical page 3 allocated
-At time 6 disk address 10 for process 2 is loaded into memory page 3.
-Free Physical page 0 allocated
-Free Physical page 1 allocated
-At time 10 disk address 20 for process 3 is loaded into memory page 1.
-PageFault upon VA 0x10 from process 2
+At time 3 disk address 10 for process 2 is loaded into memory page 3.
 Free Physical page 4 allocated
 Free Physical page 5 allocated
+At time 5 disk address 20 for process 3 is loaded into memory page 5.
 Free Physical page 6 allocated
-At time 14 disk address 30 for process 4 is loaded into memory page 6.
 Free Physical page 7 allocated
+At time 7 disk address 30 for process 4 is loaded into memory page 7.
 Free Physical page 8 allocated
-At time 16 disk address 40 for process 5 is loaded into memory page 8.
 Free Physical page 9 allocated
+At time 9 disk address 40 for process 5 is loaded into memory page 9.
 Free Physical page 10 allocated
-At time 20 disk address 50 for process 6 is loaded into memory page 10.
 Free Physical page 11 allocated
+At time 11 disk address 50 for process 6 is loaded into memory page 11.
 Free Physical page 12 allocated
-At time 22 disk address 60 for process 7 is loaded into memory page 12.
-At time 24 disk address 11 for process 2 is loaded into memory page 4.
 Free Physical page 13 allocated
+At time 13 disk address 60 for process 7 is loaded into memory page 13.
 Free Physical page 14 allocated
-At time 26 disk address 70 for process 8 is loaded into memory page 14.
 Free Physical page 15 allocated
+At time 15 disk address 70 for process 8 is loaded into memory page 15.
 Free Physical page 16 allocated
-At time 30 disk address 80 for process 9 is loaded into memory page 16.
 Free Physical page 17 allocated
+At time 17 disk address 80 for process 9 is loaded into memory page 17.
 Free Physical page 18 allocated
-At time 34 disk address 90 for process 10 is loaded into memory page 18.
 Free Physical page 19 allocated
+At time 19 disk address 90 for process 10 is loaded into memory page 19.
 Free Physical page 20 allocated
-At time 38 disk address 100 for process 11 is loaded into memory page 20.
 Free Physical page 21 allocated
+At time 21 disk address 100 for process 11 is loaded into memory page 21.
 Free Physical page 22 allocated
-At time 42 disk address 110 for process 12 is loaded into memory page 22.
 Free Physical page 23 allocated
+At time 23 disk address 110 for process 12 is loaded into memory page 23.
 Free Physical page 24 allocated
-At time 48 disk address 120 for process 13 is loaded into memory page 24.
 Free Physical page 25 allocated
+At time 25 disk address 120 for process 13 is loaded into memory page 25.
 Free Physical page 26 allocated
-At time 52 disk address 130 for process 14 is loaded into memory page 26.
+Free Physical page 27 allocated
+At time 27 disk address 130 for process 14 is loaded into memory page 27.
+Free Physical page 28 allocated
+Free Physical page 29 allocated
+At time 29 disk address 140 for process 15 is loaded into memory page 29.
+Free Physical page 30 allocated
+Free Physical page 31 allocated
+At time 31 disk address 150 for process 16 is loaded into memory page 31.
+PageFault upon VA 0x10 from process 2
+Swapping out page 1 to disk
+At time 56 disk address 11 for process 2 is loaded into memory page 1.

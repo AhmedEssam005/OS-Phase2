@@ -2,8 +2,8 @@
 #include "DataStructures.h"
 void RR (int msg_id, int sem_id, int total_processes, int quantum, int k);
 
-PCB pcbTable[1000]; // assuming maximum 100 processes
-int pcbTableSize = 0;  // how many processes in the table so far
+PCB pcbTable[1000]; 
+int pcbTableSize = 0; 
 
 
 int main(int argc, char * argv[])

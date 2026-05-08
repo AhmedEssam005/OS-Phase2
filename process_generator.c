@@ -15,7 +15,6 @@ typedef struct {
 processData processes[MAX_PROCESSES];
 int process_count = 0;
 int msgqid = -1;
-int msgqid1 = -1;
 int sem_id = -1;
 
 void clearResources(int signum);
@@ -56,9 +55,8 @@ int main(int argc, char *argv[])
 
     key_t key1 = ftok("keyfile", MSGKEY1);
     if(key1 == -1) { perror("ftok failed"); exit(-1); }
-    msgqid1 = msgget(key1, IPC_CREAT | 0666);
-    if (msgqid1 == -1) { perror("msgget failed"); exit(-1); }
-    msgqid = msgqid1;
+    msgqid = msgget(key1, IPC_CREAT | 0666);
+    if (msgqid == -1) { perror("msgget failed"); exit(-1); }
 
 
     sem_id = semget(SEMKEY, 1, IPC_CREAT | 0666);
@@ -115,7 +113,7 @@ int main(int argc, char *argv[])
             message.base     = processes[i].base;
             message.limit    = processes[i].limit;
 
-            msgsnd(msgqid1, &message, sizeof(ProcessMsg)-sizeof(long), 0);
+            msgsnd(msgqid, &message, sizeof(ProcessMsg)-sizeof(long), 0);
             printf("Sent process %d at time %d\n", processes[i].id, now);
             sent++;
         }
@@ -133,7 +131,7 @@ int main(int argc, char *argv[])
             end_msg.base     = -1;
             end_msg.limit    = -1;
 
-            msgsnd(msgqid1, &end_msg, sizeof(ProcessMsg)-sizeof(long), 0);
+            msgsnd(msgqid, &end_msg, sizeof(ProcessMsg)-sizeof(long), 0);
         }
 
         if(end_sent) {
@@ -149,10 +147,13 @@ int main(int argc, char *argv[])
 void clearResources(int signum)
 {
     signal(SIGINT, SIG_DFL); 
-    if (msgqid1 != -1) {
-        msgctl(msgqid1, IPC_RMID, NULL); 
+    if (msgqid != -1) {
+        msgctl(msgqid, IPC_RMID, NULL); 
         printf("Message queue 1 removed.\n");
     }
-    
+    if(sem_id != -1) {
+        semctl(sem_id, 0, IPC_RMID); 
+        printf("Semaphore removed.\n");
+    }
     destroyClk(true);
 }
