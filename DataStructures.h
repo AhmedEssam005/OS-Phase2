@@ -30,7 +30,7 @@ typedef struct
     int wakeUpTime;
     Request *requests;     
     int request_count;     
-    int last_request_idx;  
+    char pending_fault_rw;
     int reserved_frame;    
     int pending_fault_vpn;
 } PCB;

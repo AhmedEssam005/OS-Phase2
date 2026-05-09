@@ -5,36 +5,6 @@ FILE *memory_log = NULL;
 Frame RAM[32];
 int memory_initialized = 0;
 
-int binary_to_decimal(const char *binary_str)
-{
-    if (binary_str == NULL || binary_str[0] == '\0')
-    {
-        return 0;
-    }
-
-    int result = 0;
-    int i = 0;
-
-    while (binary_str[i] != '\0')
-    {
-        if (binary_str[i] != '0' && binary_str[i] != '1')
-        {
-            printf("ERROR: Invalid binary character '%c' in '%s'\n", binary_str[i], binary_str);
-            return -1;
-        }
-        result = result * 2 + (binary_str[i] - '0');
-        i++;
-    }
-
-    if (result > 1023)
-    {
-        printf("ERROR: Binary value exceeds 10-bit range: %d\n", result);
-        return -1;
-    }
-
-    return result;
-}
-
 void initialize_MMU()
 {
     for (int i = 0; i < 32; i++)
@@ -169,9 +139,9 @@ void allocate_page_table(PCB *pcb, int current_time)
     RAM[pt_frame].page_table[0].PhysicalAddress = first_page_frame;
     RAM[pt_frame].page_table[0].valid = true;
 
-    pcb->last_request_idx = 0;
     pcb->reserved_frame = -1;
     pcb->pending_fault_vpn = -1;
+    pcb->pending_fault_rw = 'r';
 }
 
 int nru_evict(bool *is_modified)
@@ -181,7 +151,7 @@ int nru_evict(bool *is_modified)
 
     for (int i = 0; i < 32; i++)
     {
-        if (RAM[i].is_free || RAM[i].is_PT)
+        if (RAM[i].is_free || RAM[i].is_PT || RAM[i].occupied_process == -1)
             continue;
 
         int r = RAM[i].referenced ? 1 : 0;
@@ -244,12 +214,11 @@ int nru_evict(bool *is_modified)
 int access_memory(PCB *pcb, int relative_time, int current_time)
 {
     Request *current_req = NULL;
-    for (int i = pcb->last_request_idx; i < pcb->request_count; i++)
+    for (int i =0; i < pcb->request_count; i++)
     {
-        if (pcb->requests[i].time == relative_time) 
+        if (pcb->requests[i].time == relative_time)
         {
             current_req = &pcb->requests[i];
-            pcb->last_request_idx = i + 1;
             break;
         }
     }
@@ -259,9 +228,9 @@ int access_memory(PCB *pcb, int relative_time, int current_time)
         return NO_REQUEST;
     }
 
-    int vpn = current_req->address / 16; 
-    
-    if(vpn>=pcb->limit) return NO_REQUEST;
+    int vpn = current_req->address / 16;
+    if (vpn >= pcb->limit)
+        return NO_REQUEST;
 
     int pt_frame = pcb->PT_PhysicalAddress;
     PTE *my_pte = &RAM[pt_frame].page_table[vpn];
@@ -304,6 +273,7 @@ int access_memory(PCB *pcb, int relative_time, int current_time)
     pcb->reserved_frame = target_frame;
     RAM[target_frame].is_free = false;
     pcb->pending_fault_vpn = vpn;
+    pcb->pending_fault_rw = current_req->rwFlag;
 
     return penalty;
 }
@@ -324,10 +294,19 @@ void complete_page_fault(PCB *pcb, int current_time)
     RAM[frame].modified = 0;
 
     int pt_frame = pcb->PT_PhysicalAddress;
+
     RAM[pt_frame].page_table[vpn].PhysicalAddress = frame;
     RAM[pt_frame].page_table[vpn].valid = true;
-    RAM[pt_frame].page_table[vpn].refrenced = 0;
-    RAM[pt_frame].page_table[vpn].modified = 0;
+    if (pcb->pending_fault_rw == 'w')
+    {
+        RAM[frame].modified = 1;
+        RAM[pt_frame].page_table[vpn].modified = 1;
+    }
+    else
+    {
+        RAM[frame].modified = 0;
+        RAM[pt_frame].page_table[vpn].modified = 0;
+    }
 
     int disk_address = pcb->base + vpn;
     if (memory_log)

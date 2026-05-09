@@ -17,7 +17,6 @@ void RR(int msg_id, int sem_id, int total_processes, int quantum, int k)
     int finished_processes = 0;
     bool isRunning = false;
 
-
     int process_sem_id = semget(PROC_SEM_KEY, 1, IPC_CREAT | 0666);
     if (process_sem_id == -1)
     {
@@ -37,10 +36,12 @@ void RR(int msg_id, int sem_id, int total_processes, int quantum, int k)
     int total_quantums_passed = 0;
 
     bool pending_quantum_expire = false;
+    bool generator_finished = false;
     PCB expiring_process;
+
     initialize_MMU();
 
-    while (finished_processes < total_processes)
+    while (!generator_finished || isRunning || ready_q->size > 0 || blocked_q->size > 0)
     {
         current_time = getClk();
         if (current_time > last_time)
@@ -87,7 +88,7 @@ void RR(int msg_id, int sem_id, int total_processes, int quantum, int k)
 
                     if (running_process.remainingTime == 0)
                     {
-                        
+
                         isRunning = false;
                         context_switch = 1;
                         finished_processes++;
@@ -140,8 +141,15 @@ void RR(int msg_id, int sem_id, int total_processes, int quantum, int k)
 
         ProcessMsg message;
 
-        while (msgrcv(msg_id, &message, sizeof(message) - sizeof(long), PROCESS_MSG_TYPE, IPC_NOWAIT) != -1)
+        while (msgrcv(msg_id, &message, sizeof(message) - sizeof(long), 0, IPC_NOWAIT) != -1)
         {
+            if (message.id == -1)
+            {
+                generator_finished = true;
+                printf("At time %d: Process generator has finished sending all processes.\n", current_time);
+                continue;
+            }
+
             PCB new_process;
             new_process.id = message.id;
             new_process.arrivalTime = message.arrival;
@@ -206,7 +214,7 @@ void RR(int msg_id, int sem_id, int total_processes, int quantum, int k)
             }
         }
     }
-  
+
     semctl(process_sem_id, 0, IPC_RMID);
     fclose(memory_log);
 }
