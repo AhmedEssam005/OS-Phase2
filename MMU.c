@@ -241,13 +241,12 @@ int nru_evict(bool *is_modified)
     return victim;
 }
 
-
 int access_memory(PCB *pcb, int relative_time, int current_time)
 {
     Request *current_req = NULL;
     for (int i = pcb->last_request_idx; i < pcb->request_count; i++)
     {
-        if (pcb->requests[i].time == relative_time)
+        if (pcb->requests[i].time == relative_time) 
         {
             current_req = &pcb->requests[i];
             pcb->last_request_idx = i + 1;
@@ -260,7 +259,9 @@ int access_memory(PCB *pcb, int relative_time, int current_time)
         return NO_REQUEST;
     }
 
-    int vpn = current_req->address / 16;
+    int vpn = current_req->address / 16; 
+    
+    if(vpn>=pcb->limit) return NO_REQUEST;
 
     int pt_frame = pcb->PT_PhysicalAddress;
     PTE *my_pte = &RAM[pt_frame].page_table[vpn];
