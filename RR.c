@@ -16,7 +16,7 @@ void RR(int msg_id, int sem_id, int total_processes, int quantum, int k)
     PCB running_process;
     int finished_processes = 0;
     bool isRunning = false;
-
+    FILE *log_file = fopen("scheduler.log", "w");
     int process_sem_id = semget(PROC_SEM_KEY, 1, IPC_CREAT | 0666);
     if (process_sem_id == -1)
     {
@@ -26,7 +26,9 @@ void RR(int msg_id, int sem_id, int total_processes, int quantum, int k)
     union Semun sem_un;
     sem_un.val = 0;
     semctl(process_sem_id, 0, SETVAL, sem_un);
-
+    float total_wta = 0;
+    float total_waiting = 0;
+    float total_wta_square = 0;
     int total_runtime = 0;
     int current_time = getClk();
     int last_time = -1;
@@ -88,7 +90,14 @@ void RR(int msg_id, int sem_id, int total_processes, int quantum, int k)
 
                     if (running_process.remainingTime == 0)
                     {
-
+                        int ta = current_time - running_process.arrivalTime;
+                        float wta = (float)ta / running_process.runTime;
+                        total_wta += wta;
+                        total_wta_square += wta * wta;
+                        total_waiting += running_process.waitingTime;
+                        fprintf(log_file, "At time %d process %d finished arr %d total %d remain 0 wait %d TA %d WTA %.2f\n",
+                                current_time, running_process.id, running_process.arrivalTime, running_process.runTime,
+                                running_process.waitingTime, ta, wta);
                         isRunning = false;
                         context_switch = 1;
                         finished_processes++;
@@ -168,6 +177,9 @@ void RR(int msg_id, int sem_id, int total_processes, int quantum, int k)
             if (ready_q->size > 1)
             {
                 kill(expiring_process.pid, SIGSTOP);
+                fprintf(log_file, "At time %d process %d stopped arr %d total %d remain %d wait %d\n",
+                        current_time, expiring_process.id, expiring_process.arrivalTime, expiring_process.runTime,
+                        expiring_process.remainingTime, expiring_process.waitingTime);
                 context_switch = 1;
             }
             else
@@ -201,6 +213,9 @@ void RR(int msg_id, int sem_id, int total_processes, int quantum, int k)
                     running_process.pid = pid;
                     running_process.state = 'R';
                     running_process.waitingTime += current_time - running_process.arrivalTime;
+                    fprintf(log_file, "At time %d process %d started arr %d total %d remain %d wait %d\n",
+                            current_time, running_process.id, running_process.arrivalTime, running_process.runTime,
+                            running_process.remainingTime, running_process.waitingTime);
                     allocate_page_table(&running_process, current_time);
                     isRunning = true;
                 }
@@ -210,11 +225,24 @@ void RR(int msg_id, int sem_id, int total_processes, int quantum, int k)
                 kill(running_process.pid, SIGCONT);
                 running_process.waitingTime += current_time - running_process.lastRun;
                 running_process.state = 'R';
+                fprintf(log_file, "At time %d process %d resumed arr %d total %d remain %d wait %d\n",
+                        current_time, running_process.id, running_process.arrivalTime, running_process.runTime,
+                        running_process.remainingTime, running_process.waitingTime);
                 isRunning = true;
             }
         }
     }
-
+    FILE *perf_file = fopen("scheduler.perf", "w");
+    float avg_wta = total_wta / total_processes;
+    float avg_wait = total_waiting / total_processes;
+    float std_dev = sqrt((total_wta_square / total_processes) - (avg_wta * avg_wta));
+    float cpu_util = ((float)total_runtime / getClk()) * 100;
+    fprintf(perf_file, "CPU utilization = %.2f%%\n", cpu_util);
+    fprintf(perf_file, "Avg WTA = %.2f\n", avg_wta);
+    fprintf(perf_file, "Avg Waiting = %.2f\n", avg_wait);
+    fprintf(perf_file, "Std WTA = %.2f\n", std_dev);
+    fclose(log_file);
     semctl(process_sem_id, 0, IPC_RMID);
     fclose(memory_log);
+    fclose(perf_file);
 }
